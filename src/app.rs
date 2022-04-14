@@ -19,17 +19,19 @@ pub fn app() -> Html {
 pub struct WasmWallet {
     wallet: Rc<Wallet<MemoryDatabase>>,
     blockchain: Rc<EsploraBlockchain>,
+    balance: u64,
     address: String,
 }
 
 // Define the possible messages which can be sent to the component
 pub enum WasmWalletMsg {
+    Balance,
     NewAddress,
     Sync,
 }
 
 impl WasmWallet {
-    fn sync(&self) {
+    fn sync(&mut self) {
         let wallet = Rc::clone(&self.wallet);
         let blockchain = Rc::clone(&self.blockchain);
         spawn_local(async move {
@@ -43,12 +45,19 @@ impl WasmWallet {
         });
     }
 
+    fn balance(&mut self) {
+        let wallet = Rc::clone(&self.wallet);
+        let balance = wallet.as_ref().get_balance().expect("balance");
+        info!("balance: {}", &balance);
+        self.balance = balance;
+    }
+
     fn new_address(&mut self) {
         let wallet = Rc::clone(&self.wallet);
         let address = wallet
             .as_ref()
             .get_address(AddressIndex::New)
-            .expect("address")
+            .expect("new address")
             .address
             .to_string();
         info!("new address: {}", &address);
@@ -69,23 +78,25 @@ impl Component for WasmWallet {
             MemoryDatabase::default(),
         ).expect("Wallet::new");
 
-        let address = wallet
-            .get_address(AddressIndex::New)
-            .expect("address")
-            .address
-            .to_string();
+        let balance = 0;
+        let address = "".to_string();
 
         let wallet = Rc::new(wallet);
         let blockchain = Rc::new(blockchain);
         WasmWallet {
             wallet,
             blockchain,
+            balance,
             address,
         }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            WasmWalletMsg::Balance => {
+                self.balance();
+                true // Return true to cause the displayed change to update
+            }
             WasmWalletMsg::NewAddress => {
                 self.new_address();
                 true // Return true to cause the displayed change to update
@@ -99,11 +110,18 @@ impl Component for WasmWallet {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let on_sync = ctx.link().callback(|_| WasmWalletMsg::Sync);
+        let on_balance = ctx.link().callback(|_| WasmWalletMsg::Balance);
         let on_new_address = ctx.link().callback(|_| WasmWalletMsg::NewAddress);
         html! {
             <div>
                 <div>
                     <button onclick={on_sync}>{ "Sync" }</button>
+                </div>
+                <div>
+                    <button onclick={on_balance}>{ "Balance" }</button>
+                </div>
+                <div>
+                    { self.balance }
                 </div>
                 <div>
                     <button onclick={on_new_address}>{ "New Address" }</button>
