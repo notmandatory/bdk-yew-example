@@ -1,4 +1,4 @@
-# bdk-wasm-example
+# bdk-yew-example
 
 This project builds a simple bdk-wasm based testnet wallet as a single page web app. The page can 
 be hosted locally or automatically deployed to GitHub Pages. 
